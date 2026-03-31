@@ -31,6 +31,7 @@ var brushTypes = []struct {
 	{cfg.BrushSpray, "Spray"},
 	{cfg.BrushChalk, "Chalk"},
 	{cfg.BrushWatercolor, "Water"},
+	{cfg.BrushEraser, "Eraser"},
 }
 
 var brushSizes = []struct {
@@ -184,6 +185,15 @@ func drawBrushPreview(cr *cairo.Context, w, h int, brushType int, selected bool)
 		cr.SetSourceRGBA(0.2, 0.4, 1.0, 0.3)
 		cr.Arc(cx-2, cy+1, 8, 0, 2*math.Pi)
 		cr.Fill()
+	case cfg.BrushEraser:
+		// Pink eraser rectangle.
+		cr.SetSourceRGBA(1.0, 0.7, 0.7, 1.0)
+		cr.Rectangle(cx-10, cy-7, 20, 14)
+		cr.Fill()
+		cr.SetSourceRGBA(0.5, 0.3, 0.3, 1.0)
+		cr.SetLineWidth(1.5)
+		cr.Rectangle(cx-10, cy-7, 20, 14)
+		cr.Stroke()
 	default:
 		cr.Arc(cx, cy, 6, 0, 2*math.Pi)
 		cr.Fill()

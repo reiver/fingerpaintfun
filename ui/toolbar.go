@@ -49,6 +49,20 @@ func newToolbarWidget(canvas *canvasWidget) *toolbarWidget {
 	)
 	t.stack.AddNamed(t.brushPicker.grid, "brushes")
 
+	// Stamp picker.
+	stampPicker := newStampPickerWidget(func(stampID int) {
+		canvas.currentStamp = stampID
+	})
+	t.stack.AddNamed(stampPicker.grid, "stamps")
+
+	// Template picker.
+	templatePicker := newTemplatePickerWidget(func(templateID int) {
+		canvas.currentTemplate = templateID
+		canvas.renderer.templateID = templateID
+		canvas.area.QueueDraw()
+	})
+	t.stack.AddNamed(templatePicker.grid, "templates")
+
 	// Background color picker.
 	t.bgPicker = newBgPickerWidget(func(color [4]float64) {
 		canvas.state.BgColor = color
@@ -73,6 +87,10 @@ func newToolbarWidget(canvas *canvasWidget) *toolbarWidget {
 		case "palette":
 			t.currentPage = "brushes"
 		case "brushes":
+			t.currentPage = "stamps"
+		case "stamps":
+			t.currentPage = "templates"
+		case "templates":
 			t.currentPage = "bg"
 		default:
 			t.currentPage = "palette"
@@ -80,6 +98,17 @@ func newToolbarWidget(canvas *canvasWidget) *toolbarWidget {
 		t.stack.SetVisibleChildName(t.currentPage)
 	})
 	btnBox.Append(toggleBtn)
+
+	// Mirror mode toggle.
+	mirrorBtn := gtk.NewToggleButton()
+	mirrorBtn.SetIconName("object-flip-horizontal-symbolic")
+	mirrorBtn.SetSizeRequest(48, 48)
+	mirrorBtn.AddCSSClass("flat")
+	mirrorBtn.ConnectToggled(func() {
+		canvas.state.MirrorMode = mirrorBtn.Active()
+		canvas.area.QueueDraw()
+	})
+	btnBox.Append(mirrorBtn)
 
 	// Clear button.
 	btnBox.Append(t.actions.clearBtn)

@@ -11,6 +11,9 @@ const (
 	BrushSpray
 	BrushChalk
 	BrushWatercolor
+	BrushEraser
+	BrushStamp
+	BrushFill
 )
 
 // Brush size constants (in pixels).

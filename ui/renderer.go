@@ -13,15 +13,19 @@ type renderer struct {
 	cacheW     int
 	cacheH     int
 	cacheCount int // number of committed strokes rendered to cache
+	templateID int // current template (0 = none)
 }
 
 // Render draws the full canvas: background, cached committed strokes, and active strokes.
-func (receiver *renderer) Render(cr *cairolib.Context, width, height int, state *canvas.CanvasState, active *canvas.ActiveStrokes) {
+func (receiver *renderer) Render(cr *cairolib.Context, width, height int, state *canvas.CanvasState, active *canvas.ActiveStrokes, m *mascot) {
 	// Background.
 	bg := state.BgColor
 	cr.SetSourceRGBA(bg[0], bg[1], bg[2], bg[3])
 	cr.Rectangle(0, 0, float64(width), float64(height))
 	cr.Fill()
+
+	// Draw template outline (between background and strokes).
+	RenderTemplate(cr, receiver.templateID, float64(width), float64(height))
 
 	// Ensure cache surface exists and matches current dimensions.
 	receiver.ensureCache(width, height, state)
@@ -35,6 +39,23 @@ func (receiver *renderer) Render(cr *cairolib.Context, width, height int, state 
 	// Draw active (in-progress) strokes on top.
 	for _, s := range active.All() {
 		RenderStroke(cr, s)
+	}
+
+	// Draw mascot overlay.
+	if m != nil {
+		m.Render(cr, width, height)
+	}
+
+	// Draw mirror axis line when mirror mode is active.
+	if state.MirrorMode {
+		centerX := float64(width) / 2
+		cr.SetSourceRGBA(0.5, 0.5, 0.5, 0.4)
+		cr.SetLineWidth(1)
+		cr.SetDash([]float64{6, 4}, 0)
+		cr.MoveTo(centerX, 0)
+		cr.LineTo(centerX, float64(height))
+		cr.Stroke()
+		cr.SetDash(nil, 0) // reset dash
 	}
 }
 

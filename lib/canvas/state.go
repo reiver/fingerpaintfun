@@ -6,9 +6,10 @@ import (
 
 // CanvasState holds all drawing state for the canvas.
 type CanvasState struct {
-	Committed []stroke.Stroke // finished strokes (undo operates on this)
-	RedoStack []stroke.Stroke // strokes removed by undo
-	BgColor   [4]float64      // background RGBA, default white
+	Committed  []stroke.Stroke // finished strokes (undo operates on this)
+	RedoStack  []stroke.Stroke // strokes removed by undo
+	BgColor    [4]float64      // background RGBA, default white
+	MirrorMode bool            // when true, strokes are mirrored horizontally
 }
 
 // NewCanvasState creates a new canvas state with a white background.

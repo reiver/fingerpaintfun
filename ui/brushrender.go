@@ -13,6 +13,17 @@ import (
 
 // RenderStroke draws a stroke using the appropriate brush renderer.
 func RenderStroke(cr *cairo.Context, s *stroke.Stroke) {
+	// Handle stamp type.
+	if s.Type == stroke.TypeStamp {
+		RenderStamp(cr, s.StampID, s.StampX, s.StampY, 48, s.Color)
+		return
+	}
+
+	// Fill strokes are rendered during the fill operation itself, not here.
+	if s.Type == stroke.TypeFill {
+		return
+	}
+
 	if len(s.Points) == 0 {
 		return
 	}
@@ -37,6 +48,8 @@ func RenderStroke(cr *cairo.Context, s *stroke.Stroke) {
 		renderChalk(cr, points, s.Color, s.BrushSize)
 	case cfg.BrushWatercolor:
 		renderWatercolor(cr, points, s.Color, s.BrushSize)
+	case cfg.BrushEraser:
+		renderEraser(cr, points, s.Color, s.BrushSize)
 	default:
 		renderRound(cr, points, s.Color, s.BrushSize)
 	}
@@ -187,6 +200,16 @@ func renderWatercolor(cr *cairo.Context, points []stroke.Point, color [4]float64
 		alpha := 0.08 + rng.Float64()*0.12
 		radius := (size / 2) + rng.Float64()*(size/4)
 		cr.SetSourceRGBA(color[0], color[1], color[2], alpha)
+		cr.Arc(p.X, p.Y, radius, 0, 2*math.Pi)
+		cr.Fill()
+	}
+}
+
+func renderEraser(cr *cairo.Context, points []stroke.Point, bgColor [4]float64, size float64) {
+	// Eraser paints with the background color.
+	cr.SetSourceRGBA(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
+	radius := size / 2
+	for _, p := range points {
 		cr.Arc(p.X, p.Y, radius, 0, 2*math.Pi)
 		cr.Fill()
 	}

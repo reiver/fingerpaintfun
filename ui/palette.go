@@ -6,6 +6,7 @@ import (
 	"fingerpaintfun/cfg"
 
 	"github.com/diamondburned/gotk4/pkg/cairo"
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -46,6 +47,12 @@ func newPaletteWidget(onChange func(color [4]float64)) *paletteWidget {
 				p.onChange([4]float64{c.R, c.G, c.B, c.A})
 			}
 			PlayPop()
+			// Bounce animation on selected swatch.
+			swatch.AddCSSClass("swatch-bounce")
+			glib.TimeoutAdd(150, func() bool {
+				swatch.RemoveCSSClass("swatch-bounce")
+				return false // don't repeat
+			})
 			// Redraw all swatches to update highlight.
 			for _, sw := range p.swatches {
 				sw.QueueDraw()
