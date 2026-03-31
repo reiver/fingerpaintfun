@@ -25,9 +25,10 @@ type canvasWidget struct {
 	currentBrush int
 	currentSize  float64
 
-	mouseDown bool
-	width     int
-	height    int
+	dragStartX float64
+	dragStartY float64
+	width      int
+	height     int
 }
 
 func newCanvasWidget() *canvasWidget {
@@ -54,80 +55,76 @@ func newCanvasWidget() *canvasWidget {
 		c.renderer.Render(cr, width, height, c.state, c.active)
 	})
 
-	// Single event controller for both touch and mouse.
+	// Mouse/single-pointer drawing via GestureDrag (idiomatic GTK4).
+	drag := gtk.NewGestureDrag()
+	drag.ConnectDragBegin(func(startX, startY float64) {
+		s := c.active.Begin(canvas.MouseSentinel, c.currentColor, c.currentBrush, c.currentSize)
+		s.Points = append(s.Points, stroke.Point{X: startX, Y: startY})
+		c.dragStartX = startX
+		c.dragStartY = startY
+		c.area.QueueDraw()
+	})
+	drag.ConnectDragUpdate(func(offsetX, offsetY float64) {
+		x := c.dragStartX + offsetX
+		y := c.dragStartY + offsetY
+		c.active.Update(canvas.MouseSentinel, x, y)
+		c.area.QueueDraw()
+	})
+	drag.ConnectDragEnd(func(offsetX, offsetY float64) {
+		s := c.active.End(canvas.MouseSentinel)
+		if s != nil {
+			canvas.CommitStroke(c.state, *s)
+		}
+		c.area.QueueDraw()
+	})
+	c.area.AddController(drag)
+
+	// Touch multi-touch drawing via EventControllerLegacy.
 	legacy := gtk.NewEventControllerLegacy()
 	legacy.ConnectEvent(func(event gdk.Eventer) bool {
-		return c.handleEvent(event)
+		return c.handleTouchEvent(event)
 	})
 	c.area.AddController(legacy)
 
 	return c
 }
 
-func (receiver *canvasWidget) handleEvent(event gdk.Eventer) bool {
-	switch e := event.(type) {
+func (receiver *canvasWidget) handleTouchEvent(event gdk.Eventer) bool {
+	e, ok := event.(*gdk.TouchEvent)
+	if !ok {
+		return false
+	}
 
-	// --- Mouse input ---
-	case *gdk.ButtonEvent:
-		if e.EventType() == gdk.ButtonPress {
-			x, y, _ := e.Position()
-			receiver.mouseDown = true
-			s := receiver.active.Begin(canvas.MouseSentinel, receiver.currentColor, receiver.currentBrush, receiver.currentSize)
-			s.Points = append(s.Points, stroke.Point{X: x, Y: y})
-			receiver.area.QueueDraw()
-			return true
+	seq := e.EventSequence()
+	id := sequenceToID(seq)
+	x, y, _ := e.Position()
+
+	switch e.EventType() {
+	case gdk.TouchBegin:
+		if palm.IsEdgeZone(x, y, receiver.width, receiver.height) {
+			receiver.suspect[id] = true
 		}
-		if e.EventType() == gdk.ButtonRelease {
-			receiver.mouseDown = false
-			s := receiver.active.End(canvas.MouseSentinel)
-			if s != nil {
+		s := receiver.active.Begin(id, receiver.currentColor, receiver.currentBrush, receiver.currentSize)
+		s.Points = append(s.Points, stroke.Point{X: x, Y: y})
+		receiver.area.QueueDraw()
+		return true
+
+	case gdk.TouchUpdate:
+		receiver.active.Update(id, x, y)
+		receiver.area.QueueDraw()
+		return true
+
+	case gdk.TouchEnd:
+		s := receiver.active.End(id)
+		if s != nil {
+			discard := receiver.suspect[id] || palm.ShouldDiscard(s)
+			if !discard {
 				canvas.CommitStroke(receiver.state, *s)
 			}
-			receiver.area.QueueDraw()
-			return true
 		}
-
-	case *gdk.MotionEvent:
-		if receiver.mouseDown {
-			x, y, _ := e.Position()
-			receiver.active.Update(canvas.MouseSentinel, x, y)
-			receiver.area.QueueDraw()
-			return true
-		}
-
-	// --- Touch input ---
-	case *gdk.TouchEvent:
-		seq := e.EventSequence()
-		id := sequenceToID(seq)
-		x, y, _ := e.Position()
-
-		switch e.EventType() {
-		case gdk.TouchBegin:
-			if palm.IsEdgeZone(x, y, receiver.width, receiver.height) {
-				receiver.suspect[id] = true
-			}
-			s := receiver.active.Begin(id, receiver.currentColor, receiver.currentBrush, receiver.currentSize)
-			s.Points = append(s.Points, stroke.Point{X: x, Y: y})
-			receiver.area.QueueDraw()
-			return true
-
-		case gdk.TouchUpdate:
-			receiver.active.Update(id, x, y)
-			receiver.area.QueueDraw()
-			return true
-
-		case gdk.TouchEnd:
-			s := receiver.active.End(id)
-			if s != nil {
-				discard := receiver.suspect[id] || palm.ShouldDiscard(s)
-				if !discard {
-					canvas.CommitStroke(receiver.state, *s)
-				}
-			}
-			delete(receiver.suspect, id)
-			receiver.area.QueueDraw()
-			return true
-		}
+		delete(receiver.suspect, id)
+		receiver.area.QueueDraw()
+		return true
 	}
 
 	return false
