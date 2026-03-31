@@ -41,9 +41,9 @@ func (receiver *renderer) Render(cr *cairolib.Context, width, height int, state 
 // InvalidateCache forces a full rebuild of the cache on the next Render call.
 // Call this after undo, redo, clear, or background color change.
 func (receiver *renderer) InvalidateCache() {
-	receivereceiver.cacheCount = 0
+	receiver.cacheCount = 0
 	if receiver.cache != nil {
-		receiver.cache.Destroy()
+		receiver.cache.Close()
 		receiver.cache = nil
 	}
 }
@@ -51,8 +51,8 @@ func (receiver *renderer) InvalidateCache() {
 // ensureCache creates or updates the off-screen surface for committed strokes.
 func (receiver *renderer) ensureCache(width, height int, state *canvas.CanvasState) {
 	// Recreate if dimensions changed.
-	if receiver.cache != nil && (receivereceiver.cacheW != width || receivereceiver.cacheH != height) {
-		r.InvalidateCache()
+	if receiver.cache != nil && (receiver.cacheW != width || receiver.cacheH != height) {
+		receiver.InvalidateCache()
 	}
 
 	committed := state.Committed
@@ -61,7 +61,7 @@ func (receiver *renderer) ensureCache(width, height int, state *canvas.CanvasSta
 	// Nothing to cache.
 	if numCommitted == 0 {
 		if receiver.cache != nil {
-			r.InvalidateCache()
+			receiver.InvalidateCache()
 		}
 		return
 	}
@@ -69,25 +69,25 @@ func (receiver *renderer) ensureCache(width, height int, state *canvas.CanvasSta
 	// Create fresh cache if needed.
 	if receiver.cache == nil {
 		receiver.cache = cairolib.CreateImageSurface(cairolib.FormatARGB32, width, height)
-		receivereceiver.cacheW = width
-		receivereceiver.cacheH = height
-		receivereceiver.cacheCount = 0
+		receiver.cacheW = width
+		receiver.cacheH = height
+		receiver.cacheCount = 0
 	}
 
 	// If undo happened (committed count shrank), rebuild from scratch.
-	if numCommitted < receivereceiver.cacheCount {
+	if numCommitted < receiver.cacheCount {
 		receiver.rebuildCache(committed)
 		return
 	}
 
 	// Incrementally render only new strokes.
-	if numCommitted > receivereceiver.cacheCount {
+	if numCommitted > receiver.cacheCount {
 		cr := cairolib.Create(receiver.cache)
-		for i := receivereceiver.cacheCount; i < numCommitted; i++ {
+		for i := receiver.cacheCount; i < numCommitted; i++ {
 			RenderStroke(cr, &committed[i])
 		}
 		cr.Close()
-		receivereceiver.cacheCount = numCommitted
+		receiver.cacheCount = numCommitted
 	}
 }
 
@@ -103,5 +103,5 @@ func (receiver *renderer) rebuildCache(committed []stroke.Stroke) {
 		RenderStroke(cr, &committed[i])
 	}
 	cr.Close()
-	receivereceiver.cacheCount = len(committed)
+	receiver.cacheCount = len(committed)
 }

@@ -152,6 +152,6 @@ func (receiver *galleryPage) loadThumbnails(nav *adw.NavigationView) {
 		})
 		pic.AddController(longPress)
 
-		g.grid.Append(pic)
+		receiver.grid.Append(pic)
 	}
 }
