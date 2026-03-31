@@ -20,12 +20,12 @@
 
 On Fedora:
 ```bash
-sudo dnf install gcc gtk4-devel libadwaita-devel glib2-devel gobject-introspection-devel
+sudo dnf install gcc gtk4-devel libadwaita-devel glib2-devel gobject-introspection-devel alsa-lib-devel
 ```
 
 On Debian/Ubuntu:
 ```bash
-sudo apt install gcc libgtk-4-dev libadwaita-1-dev libglib2.0-dev libgirepository1.0-dev
+sudo apt install gcc libgtk-4-dev libadwaita-1-dev libglib2.0-dev libgirepository1.0-dev libasound2-dev
 ```
 
 ### Development Build
