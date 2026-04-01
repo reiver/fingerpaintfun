@@ -1,0 +1,5 @@
+.toolbar {
+    background: @headerbar_bg_color;
+    min-height: 60px;
+    padding: 4px;
+}
